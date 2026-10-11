@@ -6,14 +6,16 @@ import { apiGet, apiPost } from '@/lib/api';
 export function BriefDetail({ briefId }: { briefId: string }) {
   const [brief, setBrief] = useState<any>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
+  const [scripts, setScripts] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const response = await apiGet<{ brief: any; ideas: any[] }>('/api/v1/briefs/' + briefId);
+      const response = await apiGet<{ brief: any; ideas: any[]; scripts: any[] }>('/api/v1/briefs/' + briefId);
       setBrief(response.brief);
       setIdeas(response.ideas || []);
+      setScripts(response.scripts || []);
     }
 
     load();
@@ -40,6 +42,17 @@ export function BriefDetail({ briefId }: { briefId: string }) {
     } catch (error) {
       console.error(error);
       setStatus('Failed to select idea');
+    }
+  }
+
+  async function generateScript(ideaId: string) {
+    try {
+      const response = await apiPost<{ script: any }>(`/api/v1/ideas/${ideaId}/scripts/generate`, {});
+      setScripts((current) => [response.script, ...current]);
+      setStatus('Script generated successfully');
+    } catch (error) {
+      console.error(error);
+      setStatus('Failed to generate script');
     }
   }
 
@@ -73,30 +86,57 @@ export function BriefDetail({ briefId }: { briefId: string }) {
 
         {status && <div className="mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">{status}</div>}
 
-        <section className="space-y-4">
-          {ideas.map((idea) => (
-            <div key={idea.id} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold">{idea.title}</h2>
-                  <p className="mt-2 text-sm text-slate-400">{idea.angle}</p>
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <section className="space-y-4">
+            {ideas.map((idea) => (
+              <div key={idea.id} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold">{idea.title}</h2>
+                    <p className="mt-2 text-sm text-slate-400">{idea.angle}</p>
+                  </div>
+                  <button
+                    onClick={() => selectIdea(idea.id)}
+                    className="rounded-lg border border-cyan-500 px-3 py-2 text-sm text-cyan-300"
+                  >
+                    Select idea
+                  </button>
                 </div>
-                <button
-                  onClick={() => selectIdea(idea.id)}
-                  className="rounded-lg border border-cyan-500 px-3 py-2 text-sm text-cyan-300"
-                >
-                  Select idea
-                </button>
-              </div>
 
-              <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-300">
-                <span className="rounded-full border border-slate-700 px-2 py-1">Brand fit: {idea.brandFitScore}</span>
-                <span className="rounded-full border border-slate-700 px-2 py-1">Audience: {idea.audienceAppealScore}</span>
-                <span className="rounded-full border border-slate-700 px-2 py-1">Risk: {idea.riskLevel}</span>
+                <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-300">
+                  <span className="rounded-full border border-slate-700 px-2 py-1">Brand fit: {idea.brandFitScore}</span>
+                  <span className="rounded-full border border-slate-700 px-2 py-1">Audience: {idea.audienceAppealScore}</span>
+                  <span className="rounded-full border border-slate-700 px-2 py-1">Risk: {idea.riskLevel}</span>
+                </div>
+
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => generateScript(idea.id)}
+                    className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
+                  >
+                    Generate script
+                  </button>
+                </div>
               </div>
+            ))}
+          </section>
+
+          <aside className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+            <h3 className="text-lg font-semibold">Generated scripts</h3>
+            <div className="mt-4 space-y-3">
+              {scripts.length === 0 && <p className="text-sm text-slate-400">No scripts generated yet.</p>}
+              {scripts.map((script) => (
+                <div key={script.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+                  <p className="font-medium text-slate-100">{script.title}</p>
+                  <p className="mt-2 text-sm text-slate-400">{script.hook}</p>
+                  <a href={`/briefs/${script.id}/review`} className="mt-3 inline-block text-sm text-cyan-400">
+                    Open review
+                  </a>
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
+          </aside>
+        </div>
       </div>
     </main>
   );
